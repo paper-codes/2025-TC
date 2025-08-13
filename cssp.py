@@ -73,7 +73,7 @@ def update(n, k, m, insert, has_duplicates):
     # copy node_s_zeros[j] to alpha_zeros if w2[j] is 1
     for j in range(n - k):
         qrw.apply(
-            qi.copy_register(m).ctrl(), wstate_zeros[j], node_t_zeros[j],
+            qi.copy_register(m).ctrl(), wstate_zeros[j], node_s_zeros[j],
             alpha_zeros)
     # delete the selected elements (in alpha_zeros) from node_t_zeros
     qrw.apply(qrout_insert_zeros.dag(), alpha_zeros, node_t_zeros)
@@ -82,14 +82,14 @@ def update(n, k, m, insert, has_duplicates):
     qrw.apply(qrout_insert_ones, alpha_zeros, node_t_ones)
     qrw.apply(qrout_insert_zeros, alpha_ones, node_t_zeros)
 
-    # reset ancilla
+    # reset alphas
     for j in range(k):
         qrw.apply(
             qi.copy_register(m).ctrl(), wstate_ones[j], node_s_ones[j],
             alpha_ones)
     for j in range(n - k):
         qrw.apply(
-            qi.copy_register(m).ctrl(), wstate_zeros[j], node_t_zeros[j],
+            qi.copy_register(m).ctrl(), wstate_zeros[j], node_s_zeros[j],
             alpha_zeros)
     # qrw.free_ancillae(alpha_zeros)
     # qrw.free_ancillae(alpha_ones)
