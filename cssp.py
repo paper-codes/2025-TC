@@ -7,6 +7,7 @@ from qat.lang.AQASM.program import Program
 from qat.lang.AQASM.qftarith import QFT
 from qat.lang.AQASM.routines import QRoutine
 from qat.pylinalg import PyLinalg
+
 from qatext.qatmgmt.program import ProgramWrapper
 from qatext.qatmgmt.routines import QRoutineWrapper
 from qatext.qatmgmt.sample import extract_qarray_values_by_named_qarrays
@@ -144,16 +145,28 @@ def main(n,
     insert = insert_lw if low_width else insert_ld
     # Assuming no duplicates
     m = max(values).bit_length()
+    print(f"Original: n {n}, k {k}, m {m}, values {values}, target sum = {target_sum}")
+
+    values = sorted(values)
+    has_repetitions = any(values[i] == values[i - 1]
+                          for i in range(1, len(values)))
+    if k > n / 2:
+        target_sum = sum(values) - target_sum
+        k = n - k
+    print(f"Modified: n {n}, k {k}, m {m}, values {values}, target sum = {target_sum}")
+
     # the spectral gap of the johnson graph (n, k)
     delta = n / (k * (n - k))
     # 2^s >  \pi/(2 \sqrt(delta)) -> s > log_2(\pi/(2\sqrt(\delta)))
-    len_s = int(np.ceil(np.log2(np.pi / (2 * np.sqrt(delta)))))
+    len_s = int(round(np.log2(np.pi / (2 * np.sqrt(delta)))))
+    len_s = max(1, len_s)
+    # n iterations external
+    n_external_iters = int(round(np.sqrt(comb(n, k))))
+    n_external_iters = max(1, n_external_iters)
 
-    sorted_values = sorted(values)
-    has_repetitions = any(sorted_values[i] == sorted_values[i - 1]
-                          for i in range(1, len(sorted_values)))
     # I need to store the sum of k elements, and in the worst case is the sum of the last k elements
-    n_qubits_sum = sum(sorted_values[-k:]).bit_length()
+    n_qubits_sum = sum(values[-k:]).bit_length()
+    print(f"n_qubits_sum: {n_qubits_sum}; len:_s {len_s}; delta: {delta}; n_external_iters: {n_external_iters}")
 
     prw = ProgramWrapper(Program())
     dicke = prw.qarray_alloc(n, 1, "dicke", str)
@@ -166,16 +179,24 @@ def main(n,
     wstate_ones = prw.qarray_alloc(k, 1, "w_1", str)
     wstate_zeros = prw.qarray_alloc(n - k, 1, "w_0", str)
 
+    # catch all ancillae
+    prw.qarray_noalloc(None,
+                       None,
+                       "anc",
+                       wstate_zeros[-1].start + wstate_zeros[-1].length,
+                       str,
+                       unknown_size=True)
+
     qpe_s = prw.qarray_alloc(len_s, 1, "qpe_s", str)
     sum_reg = prw.qarray_alloc(1, n_qubits_sum, "sum", int)
 
     # dicke + bix
     prw.apply(generate(n, k), dicke)
-    prw.apply(bix.bix_data_compile_time(n, m, k, sorted_values), dicke,
+    prw.apply(bix.bix_data_compile_time(n, m, k, values), dicke,
               node_s_ones, node_s_zeros)
-    if intermediate_simulation:
-        print("After bix")
-        simulate_program(prw)  # seems ok
+    # if intermediate_simulation:
+    #     print("After bix")
+    #     simulate_program(prw)  # seems ok
     qrw_update = update(n, k, m, insert, has_repetitions)
     prw.apply(
         qrw_update,
@@ -194,8 +215,6 @@ def main(n,
     for qb in qpe_s:
         prw.apply(H, qb)
 
-    # n iterations external
-    n_external_iters = int(np.ceil(np.sqrt(comb(n, k))))
     for iter_no in range(n_external_iters):
         # oracle
         qf_ora = oracle(n, k, m, n_qubits_sum, target_sum)
@@ -262,17 +281,6 @@ def main(n,
                     print(f"Iteration {iter_no}. After ref(b)")
                     simulate_program(prw)
 
-            # # reset alpha_0/1
-            # for j in range(k):
-            #     prw.apply(
-            #         qregs_init.copy_register(m).ctrl(), wstate_ones[j],
-            #         node_s_ones[j], alpha_ones)
-            # for j in range(n - k):
-            #     prw.apply(
-            #         qregs_init.copy_register(m).ctrl(), wstate_zeros[j],
-            #         node_s_zeros[j], alpha_zeros)
-            # prw.apply(generate(k, 1), wstate_ones)
-            # prw.apply(generate(n - k, 1), wstate_zeros)
             prw.apply(QFT(len_s).dag(), qpe_s)
             if intermediate_simulation:
                 print(f"Iteration {iter_no}. After QFT")
@@ -306,12 +314,11 @@ if __name__ == '__main__':
     to_simulate = bool(sys.argv[1])
     intermediate_simulation = bool(sys.argv[2])
     print(f"To simulate is {to_simulate}")
-    values = [0, 1, 2]
+    values = [1, 2, 0]
     n = len(values)
     k = 1
-    m = max(values).bit_length()
+    # m = max(values).bit_length()
     ts = 3
-    print(f"n {n}, k {k}, m {m}, values {values}, target sum = {ts}")
     main(n,
          k,
          values,
