@@ -7,7 +7,6 @@ from qat.lang.AQASM.program import Program
 from qat.lang.AQASM.qftarith import QFT
 from qat.lang.AQASM.routines import QRoutine
 from qat.pylinalg import PyLinalg
-
 from qatext.qatmgmt.program import ProgramWrapper
 from qatext.qatmgmt.routines import QRoutineWrapper
 from qatext.qatmgmt.sample import extract_qarray_values_by_named_qarrays
@@ -149,7 +148,9 @@ def main(n,
     insert = insert_lw if low_width else insert_ld
     # Assuming no duplicates
     m = max(values).bit_length()
-    print(f"Original: n {n}, k {k}, m {m}, values {values}, target sum = {target_sum}")
+    print(
+        f"Original: n {n}, k {k}, m {m}, values {values}, target sum = {target_sum}"
+    )
 
     values = sorted(values)
     has_repetitions = any(values[i] == values[i - 1]
@@ -157,7 +158,9 @@ def main(n,
     if k > n / 2:
         target_sum = sum(values) - target_sum
         k = n - k
-    print(f"Modified: n {n}, k {k}, m {m}, values {values}, target sum = {target_sum}")
+    print(
+        f"Modified: n {n}, k {k}, m {m}, values {values}, target sum = {target_sum}"
+    )
 
     # the spectral gap of the johnson graph (n, k)
     delta = n / (k * (n - k))
@@ -170,7 +173,9 @@ def main(n,
 
     # I need to store the sum of k elements, and in the worst case is the sum of the last k elements
     n_qubits_sum = sum(values[-k:]).bit_length()
-    print(f"n_qubits_sum: {n_qubits_sum}; len:_s {len_s}; delta: {delta}; n_external_iters: {n_external_iters}")
+    print(
+        f"n_qubits_sum: {n_qubits_sum}; len:_s {len_s}; delta: {delta}; n_external_iters: {n_external_iters}"
+    )
 
     prw = ProgramWrapper(Program())
     dicke = prw.qarray_alloc(n, 1, "dicke", str)
@@ -196,8 +201,8 @@ def main(n,
 
     # dicke + bix
     prw.apply(generate(n, k), dicke)
-    prw.apply(bix.bix_data_compile_time(n, m, k, values), dicke,
-              node_s_ones, node_s_zeros)
+    prw.apply(bix.bix_data_compile_time(n, m, k, values), dicke, node_s_ones,
+              node_s_zeros)
     # if intermediate_simulation:
     #     print("After bix")
     #     simulate_program(prw)  # seems ok
