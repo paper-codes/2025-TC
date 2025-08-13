@@ -122,24 +122,32 @@ def main(n,
 
     qpe_s = prw.qarray_alloc(len_s, 1, "qpe_s", str)
     sum_reg = prw.qarray_alloc(1, n_qubits_sum, "sum", int)
-    # a, b -> a+b, b
-    for qb in qpe_s:
-        prw.apply(H, qb)
 
     # dicke + bix
     prw.apply(generate(n, k), dicke)
     prw.apply(bix.bix_data_compile_time(n, m, k, sorted_values), dicke,
               node_s_ones, node_s_zeros)
+    print("After bix")
+    simulate_program(prw)  # seems ok
     qrw_update = update(n, k, m, insert)
     prw.apply(qrw_update, node_s_ones, node_s_zeros, node_t_ones, node_t_zeros,
               alpha_ones, alpha_zeros, wstate_ones, wstate_zeros)
+    print("After update")
+    simulate_program(prw)
+
+    # preparing hadamard
+    for qb in qpe_s:
+        prw.apply(H, qb)
 
     # n iterations external
     n_external_iters = int(np.ceil(np.sqrt(comb(n, k))))
     for _ in range(n_external_iters):
         # oracle
         qf_ora = oracle(n, k, m, n_qubits_sum, target_sum)
+        # a, b -> a+b, b
         prw.apply(qf_ora, node_s_ones, sum_reg)
+        print("After oracle")
+        simulate_program(prw)
 
         # walk
         with prw.compute():
