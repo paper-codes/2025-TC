@@ -7,16 +7,17 @@ from qat.lang.AQASM.program import Program
 from qat.lang.AQASM.qftarith import QFT
 from qat.lang.AQASM.routines import QRoutine
 from qat.pylinalg import PyLinalg
-
-from qatext.qatmgmt.sample import extract_qarray_values_by_named_qarrays
-from qatext.qroutines.qregs_mgmt import qregs_init as qi, qregs_init_bix as bix
-from qatext.qroutines.arith import cuccaro_arith
-from qatext.qroutines.datastructure.sliding_sort_array import (  # ld stands for low-depth
-    insert as insert_ld, insert_lw)
-from qatext.qroutines.datastructure.array import contains
-from qatext.qroutines.hamming_weight_generate.bartschiE19 import generate
 from qatext.qatmgmt.program import ProgramWrapper
 from qatext.qatmgmt.routines import QRoutineWrapper
+from qatext.qatmgmt.sample import extract_qarray_values_by_named_qarrays
+from qatext.qroutines.arith import cuccaro_arith
+from qatext.qroutines.datastructure.array import contains
+from qatext.qroutines.datastructure.sliding_sort_array import \
+    insert as insert_ld  # ld stands for low-depth
+from qatext.qroutines.datastructure.sliding_sort_array import insert_lw
+from qatext.qroutines.hamming_weight_generate.bartschiE19 import generate
+from qatext.qroutines.qregs_mgmt import qregs_init as qi
+from qatext.qroutines.qregs_mgmt import qregs_init_bix as bix
 
 QPU = PyLinalg()
 
@@ -51,8 +52,8 @@ def update(n, k, m, insert, has_duplicates):
 
     qrout_insert_ones = insert(k, m)
     qrout_insert_zeros = insert(n - k, m)
-    qrout_contains_kelements = contains(k, m, has_duplicates)
-    qrout_contains_nkelements = contains(n-k, m, has_duplicates)
+    qrout_contains_ones = contains(k, m, has_duplicates)
+    qrout_contains_zeros = contains(n - k, m, has_duplicates)
 
     # copy s to t
     qrw.apply(qi.copy_array_of_registers(k, m), node_s_ones, node_t_ones)
@@ -89,6 +90,28 @@ def update(n, k, m, insert, has_duplicates):
         qrw.apply(
             qi.copy_register(m).ctrl(), wstate_zeros[j], node_t_zeros[j],
             alpha_zeros)
+    qrw.free_ancillae(alpha_zeros)
+    qrw.free_ancillae(alpha_ones)
+
+    qbit_out = qrw.new_wires(1)
+    qrw.set_ancillae(qbit_out)
+
+    # reset wstates
+    for j in range(k):
+        # check if node_s_ones[j] is present in node_t_ones and, if not, apply
+        # X to w[j]
+        qrw.apply(qrout_contains_ones, node_s_ones[j], node_t_ones, qbit_out)
+        qrw.apply(X.ctrl(), qbit_out, wstate_ones[j])
+        qrw.apply(qrout_contains_ones, node_s_ones[j], node_t_ones, qbit_out)
+
+    for j in range(n - k):
+        # check if node_s_ones[j] is present in node_t_ones and, if not, apply
+        # X to w[j]
+        qrw.apply(qrout_contains_zeros, node_s_zeros[j], node_t_zeros,
+                  qbit_out)
+        qrw.apply(X.ctrl(), qbit_out, wstate_zeros[j])
+        qrw.apply(qrout_contains_zeros, node_s_zeros[j], node_t_zeros,
+                  qbit_out)
 
     return qrw
 
