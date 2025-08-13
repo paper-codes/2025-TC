@@ -91,11 +91,11 @@ def update(n, k, m, insert, has_duplicates):
         qrw.apply(
             qi.copy_register(m).ctrl(), wstate_zeros[j], node_t_zeros[j],
             alpha_zeros)
-    qrw.free_ancillae(alpha_zeros)
-    qrw.free_ancillae(alpha_ones)
-
-    qbit_out = qrw.new_wires(1)
-    qrw.set_ancillae(qbit_out)
+    # qrw.free_ancillae(alpha_zeros)
+    # qrw.free_ancillae(alpha_ones)
+    # qbit_out = qrw.get_free_ancillae(1)
+    # the previous does not seem to work, doing it manually
+    qbit_out = alpha_zeros[0][0]
 
     # reset wstates
     for j in range(k):
