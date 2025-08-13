@@ -63,10 +63,11 @@ def oracle(n, k, m, n_qubits_sum, target_value):
     qrw = QRoutineWrapper(QRoutine())
     node_s_ones = qrw.qarray_wires(k, m, "s_1", int)
     sum_reg = qrw.qarray_wires(1, n_qubits_sum, "sum", int)
-    qrout_sum = classarith.add(n_qubits_sum, m)
+    # qrout_sum = classarith.add(n_qubits_sum, m)
+    qrout_sum = cuccaro_arith.adder(m, n_qubits_sum, False, False)
     with qrw.compute():
         for j in range(k):
-            qrw.apply(qrout_sum, sum_reg, node_s_ones[j])
+            qrw.apply(qrout_sum, node_s_ones[j], sum_reg)
         qrw.apply(
             qregs.initialize_qureg_to_complement_of_int(
                 target_value, n_qubits_sum, False), sum_reg)
