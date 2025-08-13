@@ -6,8 +6,9 @@ from qat.lang.AQASM.gates import H, X, Z
 from qat.lang.AQASM.program import Program
 from qat.lang.AQASM.qftarith import QFT
 from qat.lang.AQASM.routines import QRoutine
-from qat.qpus import PyLinalg
+from qat.pylinalg import PyLinalg
 
+from qatext.qatmgmt.sample import extract_qarray_values_by_named_qarrays
 from qatext.qroutines import bix
 from qatext.qroutines import qregs_init
 from qatext.qroutines import qregs_init as qregs
@@ -19,6 +20,20 @@ from qatext.utils.qatmgmt.program import ProgramWrapper
 from qatext.utils.qatmgmt.routines import QRoutineWrapper
 
 QPU = PyLinalg()
+
+
+def simulate_program(
+    prw: ProgramWrapper,  # Program or Circuit
+    qubits=None,
+):
+    cr = prw.to_circ(link=[classarith, cuccaro_arith])
+    print(cr.statistics())
+    job = cr.to_job(qubits=qubits)
+    res = QPU.submit(job)
+    for sample in res:
+        result = extract_qarray_values_by_named_qarrays(
+            prw._qregnames_to_properties, sample)
+        print(sample.amplitude, result)
 
 
 def update(n, k, m, insert):
@@ -181,20 +196,19 @@ def main(n,
     print("Program qubits")
     for k, v in prw._qregnames_to_properties.items():
         print(k, v.slic)
-    cr = prw.to_circ(link=[classarith, cuccaro_arith])
-    print(cr.statistics())
-    job = cr.to_job(qubits=[*node_s_ones])
+
     if to_simulate:
-        res = QPU.submit(job)
-        for sample in res:
-            print(sample.probability, sample.state)
+        simulate_program(prw, qubits=[*node_s_ones])
+    else:
+        cr = prw.to_circ(link=[classarith, cuccaro_arith])
+        print(cr.statistics())
 
 
 if __name__ == '__main__':
     import sys
     to_simulate = bool(sys.argv[1])
     print(f"To simulate is {to_simulate}")
-    values = [1, 2, 3]
+    values = [0, 1, 2]
     n = len(values)
     k = 1
     m = max(values).bit_length()
