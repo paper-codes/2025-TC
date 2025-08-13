@@ -89,10 +89,11 @@ def main(n,
     delta = n / (k * (n - k))
     # 2^s >  \pi/(2 \sqrt(delta)) -> s > log_2(\pi/(2\sqrt(\delta)))
     len_s = int(np.ceil(np.log2(np.pi / (2 * np.sqrt(delta)))))
-    # I need to store the sum of k elements, each one having size m qubits
-    n_qubits_sum = int(np.ceil(np.log2(k))) + m
 
     sorted_values = sorted(values)
+    # I need to store the sum of k elements, and in the worst case is the sum of the last k elements
+    n_qubits_sum = sum(sorted_values[-k:]).bit_length()
+
     prw = ProgramWrapper(Program())
     dicke = prw.qarray_alloc(n, 1, "dicke", str)
     node_s_ones = prw.qarray_alloc(k, m, "s_1", int)
