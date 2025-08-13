@@ -102,7 +102,9 @@ def update(n, k, m, insert, has_duplicates):
         # check if node_s_ones[j] is present in node_t_ones and, if not, apply
         # X to w[j]
         qrw.apply(qrout_contains_ones, node_s_ones[j], node_t_ones, qbit_out)
+        qrw.apply(X, qbit_out)
         qrw.apply(X.ctrl(), qbit_out, wstate_ones[j])
+        qrw.apply(X, qbit_out)
         qrw.apply(qrout_contains_ones, node_s_ones[j], node_t_ones, qbit_out)
 
     for j in range(n - k):
@@ -110,7 +112,9 @@ def update(n, k, m, insert, has_duplicates):
         # X to w[j]
         qrw.apply(qrout_contains_zeros, node_s_zeros[j], node_t_zeros,
                   qbit_out)
+        qrw.apply(X, qbit_out)
         qrw.apply(X.ctrl(), qbit_out, wstate_zeros[j])
+        qrw.apply(X, qbit_out)
         qrw.apply(qrout_contains_zeros, node_s_zeros[j], node_t_zeros,
                   qbit_out)
 
