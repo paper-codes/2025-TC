@@ -189,16 +189,17 @@ def main(n,
     wstate_ones = prw.qarray_alloc(k, 1, "w_1", str)
     wstate_zeros = prw.qarray_alloc(n - k, 1, "w_0", str)
 
+    qpe_s = prw.qarray_alloc(len_s, 1, "qpe_s", str)
+    sum_reg = prw.qarray_alloc(1, n_qubits_sum, "sum", int)
+
     # catch all ancillae
     prw.qarray_noalloc(None,
                        None,
                        "anc",
-                       wstate_zeros[-1].start + wstate_zeros[-1].length,
+                       sum_reg[-1].start + sum_reg[-1].length,
                        str,
                        unknown_size=True)
 
-    qpe_s = prw.qarray_alloc(len_s, 1, "qpe_s", str)
-    sum_reg = prw.qarray_alloc(1, n_qubits_sum, "sum", int)
 
     # dicke + bix
     prw.apply(generate(n, k), dicke)
@@ -217,9 +218,9 @@ def main(n,
         # alpha_ones, alpha_zeros,
         wstate_ones,
         wstate_zeros)
-    if intermediate_simulation:
-        print("After update")
-        simulate_program(prw)
+    # if intermediate_simulation:
+    #     print("After update")
+    #     simulate_program(prw)
 
     # preparing hadamard
     for qb in qpe_s:
@@ -307,7 +308,7 @@ def main(n,
         prw.uncompute()
 
     print("Program qubits")
-    for k, v in prw._qregnames_to_properties.items():
+    for k, v in prw._name_to_qarray.items():
         print(k, v.slic)
 
     if to_simulate:
