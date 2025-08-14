@@ -28,7 +28,8 @@ def simulate_program(
 ):
     cr = prw.to_circ(link=[classarith, cuccaro_arith])
     print(cr.statistics())
-    job = cr.to_job(qubits=qubits)
+    # job = cr.to_job(qubits=qubits)
+    job = cr.to_job()
     res = QPU.submit(job)
     for sample in res:
         result = extract_qarray_values_by_named_qarrays(
@@ -117,10 +118,10 @@ def update(n, k, m, insert, has_duplicates):
         qrw.apply(qrout_contains_zeros, node_s_zeros[j], node_t_zeros,
                   qbit_out)
 
-    return qrw
+    return qrw._qroutine
 
 
-def oracle(n, k, m, n_qubits_sum, target_value):
+def oracle(k, m, n_qubits_sum, target_value):
     qrw = QRoutineWrapper(QRoutine())
     node_s_ones = qrw.qarray_wires(k, m, "s_1", int)
     sum_reg = qrw.qarray_wires(1, n_qubits_sum, "sum", int)
@@ -135,7 +136,7 @@ def oracle(n, k, m, n_qubits_sum, target_value):
             sum_reg)
     qrw.apply(Z.ctrl(n_qubits_sum - 1), sum_reg)
     qrw.uncompute()
-    return qrw
+    return qrw._qroutine
 
 
 def main(n,
@@ -226,7 +227,7 @@ def main(n,
 
     for iter_no in range(n_external_iters):
         # oracle
-        qf_ora = oracle(n, k, m, n_qubits_sum, target_sum)
+        qf_ora = oracle(k, m, n_qubits_sum, target_sum)
         # a, b -> a+b, b
         prw.apply(qf_ora, node_s_ones, sum_reg)
         if intermediate_simulation:
