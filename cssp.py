@@ -26,6 +26,9 @@ def simulate_program(
     prw: ProgramWrapper,  # Program or Circuit
     qubits=None,
 ):
+    print("Program qubits")
+    for k, v in prw._name_to_qarray.items():
+        print(k, v.slic)
     cr = prw.to_circ(link=[classarith, cuccaro_arith])
     print(cr.statistics())
     # job = cr.to_job(qubits=qubits)
@@ -307,9 +310,6 @@ def main(n,
             prw.apply(X, qpe_s[j])
         prw.uncompute()
 
-    print("Program qubits")
-    for k, v in prw._name_to_qarray.items():
-        print(k, v.slic)
 
     if to_simulate:
         simulate_program(prw, qubits=[*node_s_ones])
