@@ -42,6 +42,7 @@ def simulate_program(
 
 def update(n, k, m, insert, has_duplicates):
     qrw = QRoutineWrapper(QRoutine())
+    qrw._qroutine.name = "update"
 
     node_s_ones = qrw.qarray_wires(k, m, "s_1", int)
     node_s_zeros = qrw.qarray_wires(n - k, m, "s_0", int)
@@ -126,6 +127,7 @@ def update(n, k, m, insert, has_duplicates):
 
 def oracle(k, m, n_qubits_sum, target_value):
     qrw = QRoutineWrapper(QRoutine())
+    qrw._qroutine.name = "oracle"
     node_s_ones = qrw.qarray_wires(k, m, "s_1", int)
     sum_reg = qrw.qarray_wires(1, n_qubits_sum, "sum", int)
     # qrout_sum = classarith.add(n_qubits_sum, m)
@@ -203,13 +205,12 @@ def main(n,
                        str,
                        unknown_size=True)
 
-
     # dicke + bix
     prw.apply(generate(n, k), dicke)
     prw.apply(bix.bix_data_compile_time(n, m, k, values), dicke, node_s_ones,
               node_s_zeros)
+    print("After bix")
     # if intermediate_simulation:
-    #     print("After bix")
     #     simulate_program(prw)  # seems ok
     qrw_update = update(n, k, m, insert, has_repetitions)
     prw.apply(
@@ -221,13 +222,14 @@ def main(n,
         # alpha_ones, alpha_zeros,
         wstate_ones,
         wstate_zeros)
+    print("After update")
     # if intermediate_simulation:
-    #     print("After update")
     #     simulate_program(prw)
 
     # preparing hadamard
     for qb in qpe_s:
         prw.apply(H, qb)
+    print("After Hadamard")
 
     for iter_no in range(n_external_iters):
         # oracle
