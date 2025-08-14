@@ -52,9 +52,8 @@ def update(n, k, m, insert, has_duplicates):
     alpha_zeros = qrw.qarray_wires(1, m, "a_0", int)
     qrw.set_ancillae(alpha_ones)
     qrw.set_ancillae(alpha_zeros)
-    wstate_ones = qrw.qarray_wires(k, 1, "w_1", str)
-    wstate_zeros = qrw.qarray_wires(n - k, 1, "w_0", str)
 
+    qrout_copy_cell = qi.copy_register(m)
     qrout_insert_ones = insert(k, m)
     qrout_insert_zeros = insert(n - k, m)
     qrout_contains_ones = contains(k, m, has_duplicates)
@@ -64,63 +63,133 @@ def update(n, k, m, insert, has_duplicates):
     qrw.apply(qi.copy_array_of_registers(k, m), node_s_ones, node_t_ones)
     qrw.apply(qi.copy_array_of_registers(n - k, m), node_s_zeros, node_t_zeros)
 
-    # generate 2 w states, one w/ k, and another one w/ n-k elements
-    qrw.apply(generate(k, 1), wstate_ones)
-    qrw.apply(generate(n - k, 1), wstate_zeros)
-    # copy node_s_ones[j] to alpha_ones if w1[j] is 1
-    for j in range(k):
-        qrw.apply(
-            qi.copy_register(m).ctrl(), wstate_ones[j], node_s_ones[j],
-            alpha_ones)
+    if k > 2:
+        wstate_ones = qrw.qarray_wires(k, 1, "w_1", str)
+        # qrw.set_ancillae(wstate_ones)
+        qrw.apply(generate(k, 1), wstate_ones)
+    elif k == 2:
+        # an Hadamard gate is enough: 0 means first reg selected, 1 second reg
+        wstate_ones = qrw.qarray_wires(1, 1, "w_1", str)
+        qrw.apply(H, wstate_ones)
+    else:  # k = 1
+        wstate_ones = qrw.qarray_wires(1, 1, "w_1", str)
+        # # always on
+        # qrw.apply(X, wstate_ones[0])
+    if n - k > 2:
+        wstate_zeros = qrw.qarray_wires(n - k, 1, "w_0", str)
+        qrw.apply(generate(n - k, 1), wstate_zeros)
+    elif n - k == 2:
+        wstate_zeros = qrw.qarray_wires(1, 1, "w_0", str)
+        qrw.apply(H, wstate_zeros)
+    else:
+        wstate_zeros = qrw.qarray_wires(1, 1, "w_0", str)
+        # # always on
+        # qrw.apply(X, wstate_zeros[0])
+
+    with qrw.compute():
+        # generate 2 w states, one w/ k, and another one w/ n-k elements
+        #
+        # copy node_s_ones[j] to alpha_ones if w1[j] is 1
+        if k > 2:
+            for j in range(k):
+                qrw.apply(qrout_copy_cell.ctrl(), wstate_ones[j],
+                          node_s_ones[j], alpha_ones)
+        elif k == 2:
+            qrw.apply(X, wstate_ones)
+            qrw.apply(qrout_copy_cell.ctrl(), wstate_ones[0], node_s_ones[0],
+                      alpha_ones)
+            qrw.apply(X, wstate_ones)
+            qrw.apply(qrout_copy_cell.ctrl(), wstate_ones[0], node_s_ones[1],
+                      alpha_ones)
+        else:  # k = 1
+            qrw.apply(qrout_copy_cell, node_s_ones[0], alpha_ones)
+
+        if n - k > 2:
+            # copy node_s_zeros[j] to alpha_zeros if w2[j] is 1
+            for j in range(n - k):
+                qrw.apply(qrout_copy_cell.ctrl(), wstate_zeros[j],
+                          node_s_zeros[j], alpha_zeros)
+        elif n - k == 2:
+            qrw.apply(X, wstate_zeros)
+            qrw.apply(qrout_copy_cell.ctrl(), wstate_zeros[0], node_s_zeros[0],
+                      alpha_zeros)
+            qrw.apply(X, wstate_zeros)
+            qrw.apply(qrout_copy_cell.ctrl(), wstate_zeros[0], node_s_zeros[1],
+                      alpha_zeros)
+        else:
+            qrw.apply(qrout_copy_cell, node_s_zeros[0], alpha_zeros)
+
     # delete the selected elements (in alpha_ones) from node_t_ones
     qrw.apply(qrout_insert_ones.dag(), alpha_ones, node_t_ones)
-    # copy node_s_zeros[j] to alpha_zeros if w2[j] is 1
-    for j in range(n - k):
-        qrw.apply(
-            qi.copy_register(m).ctrl(), wstate_zeros[j], node_s_zeros[j],
-            alpha_zeros)
     # delete the selected elements (in alpha_zeros) from node_t_zeros
     qrw.apply(qrout_insert_zeros.dag(), alpha_zeros, node_t_zeros)
-
     # insert in node_s_ones the value stored in alpha_zeros, and viceversa
     qrw.apply(qrout_insert_ones, alpha_zeros, node_t_ones)
     qrw.apply(qrout_insert_zeros, alpha_ones, node_t_zeros)
 
     # reset alphas
-    for j in range(k):
-        qrw.apply(
-            qi.copy_register(m).ctrl(), wstate_ones[j], node_s_ones[j],
-            alpha_ones)
-    for j in range(n - k):
-        qrw.apply(
-            qi.copy_register(m).ctrl(), wstate_zeros[j], node_s_zeros[j],
-            alpha_zeros)
+    qrw.uncompute()
+    # # The following does not seem to work
     # qrw.free_ancillae(alpha_zeros)
     # qrw.free_ancillae(alpha_ones)
+    # print(qrw.freed_ancillae)
     # qbit_out = qrw.get_free_ancillae(1)
-    # the previous does not seem to work, doing it manually
+    # print(qbit_out[0].index)
+    # input()
+
     qbit_out = alpha_zeros[0][0]
 
-    # reset wstates
-    for j in range(k):
-        # check if node_s_ones[j] is present in node_t_ones and, if not, apply
-        # X to w[j]
-        qrw.apply(qrout_contains_ones, node_s_ones[j], node_t_ones, qbit_out)
-        qrw.apply(X, qbit_out)
-        qrw.apply(X.ctrl(), qbit_out, wstate_ones[j])
-        qrw.apply(X, qbit_out)
-        qrw.apply(qrout_contains_ones, node_s_ones[j], node_t_ones, qbit_out)
+    # reset dickes
+    if k >= 2:
+        # reset wstates
+        for j in range(k):
+            # check if node_s_ones[j] is present in node_t_ones and, if not,
+            # apply X to w[j]
+            qrw.apply(qrout_contains_ones, node_s_ones[j], node_t_ones,
+                      qbit_out)
+            qrw.apply(X, qbit_out)
+            if k > 2:
+                qrw.apply(X.ctrl(), qbit_out, wstate_ones[j])
+            else:
+                if j == 0:
+                    # do noting, if the first element is not present, then the
+                    # Hadamard state is 0
+                    pass
+                else:  # j == 1, second element, and it is not present, so we
+                    # have to reset hadamard qubit
+                    qrw.apply(X.ctrl(), qbit_out, wstate_ones[0])
+            qrw.apply(X, qbit_out)
+            qrw.apply(qrout_contains_ones, node_s_ones[j], node_t_ones,
+                      qbit_out)
+    else:
+        pass
+        # # always on
+        # qrw.apply(X, wstate_ones[0])
 
-    for j in range(n - k):
-        # check if node_s_ones[j] is present in node_t_ones and, if not, apply
-        # X to w[j]
-        qrw.apply(qrout_contains_zeros, node_s_zeros[j], node_t_zeros,
-                  qbit_out)
-        qrw.apply(X, qbit_out)
-        qrw.apply(X.ctrl(), qbit_out, wstate_zeros[j])
-        qrw.apply(X, qbit_out)
-        qrw.apply(qrout_contains_zeros, node_s_zeros[j], node_t_zeros,
-                  qbit_out)
+    if n - k >= 2:
+        # qbit_out = alpha_zeros[0][0]
+        assert wstate_zeros
+        for j in range(n - k):
+            # check if node_s_ones[j] is present in node_t_ones and, if not, apply
+            # X to w[j]
+            qrw.apply(qrout_contains_zeros, node_s_zeros[j], node_t_zeros,
+                      qbit_out)
+            qrw.apply(X, qbit_out)
+            if n - k > 2:
+                qrw.apply(X.ctrl(), qbit_out, wstate_zeros[j])
+            else:
+                if j == 0:
+                    # do noting, hadamard qubit is 0
+                    pass
+                else:  # j == 1, we have to reset hadamard qubit
+                    qrw.apply(X.ctrl(), qbit_out, wstate_zeros[0])
+            qrw.apply(X, qbit_out)
+            qrw.apply(qrout_contains_zeros, node_s_zeros[j], node_t_zeros,
+                      qbit_out)
+    else:
+        pass
+        # # always on
+        # qrw.apply(X, wstate_zeros[0])
 
     return qrw._qroutine
 
@@ -191,8 +260,15 @@ def main(n,
     node_t_zeros = prw.qarray_alloc(n - k, m, "t_0", int)
     # alpha_ones = prw.qarray_alloc(1, m, "a_1", int)
     # alpha_zeros = prw.qarray_alloc(1, m, "a_0", int)
-    wstate_ones = prw.qarray_alloc(k, 1, "w_1", str)
-    wstate_zeros = prw.qarray_alloc(n - k, 1, "w_0", str)
+    if k > 2:
+        wstate_ones = prw.qarray_alloc(k, 1, "w_1", str)
+    else:
+        wstate_ones = prw.qarray_alloc(1, 1, "w_1", str)
+
+    if n - k > 2:
+        wstate_zeros = prw.qarray_alloc(n - k, 1, "w_0", str)
+    else:
+        wstate_zeros = prw.qarray_alloc(1, 1, "w_0", str)
 
     qpe_s = prw.qarray_alloc(len_s, 1, "qpe_s", str)
     sum_reg = prw.qarray_alloc(1, n_qubits_sum, "sum", int)
@@ -312,7 +388,6 @@ def main(n,
             prw.apply(X, qpe_s[j])
         prw.uncompute()
 
-
     if to_simulate:
         simulate_program(prw, qubits=[*node_s_ones])
     else:
@@ -327,11 +402,11 @@ if __name__ == '__main__':
     to_simulate = bool(sys.argv[1])
     intermediate_simulation = bool(sys.argv[2])
     print(f"To simulate is {to_simulate}")
-    values = [1, 2, 0]
+    values = [0, 1, 2]
     n = len(values)
     k = 1
     # m = max(values).bit_length()
-    ts = 3
+    ts = 1
     main(n,
          k,
          values,
