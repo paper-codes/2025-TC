@@ -1,0 +1,21 @@
+- __pycache__/
+- *.ipynb*
+- *.pyc
+- *.pyo
+- *.pyd
+- .mypy_cache/
+- .pytest_cache/
+- .coverage
+- .env/
+- env/
+- venv/
+- .venv/
+- .DS_Store
+- *.egg-info/
+- dist/
+- build/
+- .eggs/
+- .idea/
+- .vscode/
+- .ruff_cache/
+
