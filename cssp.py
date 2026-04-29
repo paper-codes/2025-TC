@@ -331,9 +331,13 @@ def main(n,
                 # ... ref 0^\perp
                 for j in range(k):
                     prw.apply(X, wstate_ones[j])
-                prw.apply(Z.ctrl(k), qpe_s[qw_iter], wstate_ones)
+                for j in range(n - k):
+                    prw.apply(X, wstate_zeros[j])
+                prw.apply(Z.ctrl(n), qpe_s[qw_iter], wstate_ones, wstate_zeros)
                 for j in range(k):
                     prw.apply(X, wstate_ones[j])
+                for j in range(n - k):
+                    prw.apply(X, wstate_zeros[j])
                 prw.apply(
                     qrw_update,
                     node_s_ones,
@@ -356,10 +360,14 @@ def main(n,
                     wstate_zeros,
                     wstate_ones)
                 # ... ref 0^\perp
+                for j in range(k):
+                    prw.apply(X, wstate_ones[j])
                 for j in range(n - k):
                     prw.apply(X, wstate_zeros[j])
-                prw.apply(Z.ctrl(n - k), qpe_s[qw_iter], wstate_zeros)
+                prw.apply(Z.ctrl(n), qpe_s[qw_iter], wstate_ones, wstate_zeros)
                 for j in range(k):
+                    prw.apply(X, wstate_ones[j])
+                for j in range(n - k):
                     prw.apply(X, wstate_zeros[j])
                 prw.apply(
                     qrw_update,
