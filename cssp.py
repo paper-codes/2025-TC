@@ -241,7 +241,7 @@ def main(n,
     delta = n / (k * (n - k))
     # 2^s >  \pi/(2 \sqrt(delta)) -> s > log_2(\pi/(2\sqrt(\delta)))
     len_s = int(round(np.log2(np.pi / (2 * np.sqrt(delta)))))
-    len_s = max(1, len_s)
+    len_s = max(2, len_s)
     # n iterations external
     n_external_iters = int(round(np.sqrt(comb(n, k))))
     n_external_iters = max(1, n_external_iters)
