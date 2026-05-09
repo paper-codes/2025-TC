@@ -241,7 +241,7 @@ def main(n,
     delta = n / (k * (n - k))
     # 2^s >  \pi/(2 \sqrt(delta)) -> s > log_2(\pi/(2\sqrt(\delta)))
     len_s = int(round(np.log2(np.pi / (2 * np.sqrt(delta)))))
-    len_s = max(1, len_s)
+    len_s = max(2, len_s)
     # n iterations external
     n_external_iters = int(round(np.sqrt(comb(n, k))))
     n_external_iters = max(1, n_external_iters)
@@ -269,6 +269,9 @@ def main(n,
         wstate_zeros = prw.qarray_alloc(n - k, 1, "w_0", str)
     else:
         wstate_zeros = prw.qarray_alloc(1, 1, "w_0", str)
+
+    len_w1 = k if k > 2 else 1
+    len_w0 = (n - k) if (n - k) > 2 else 1
 
     qpe_s = prw.qarray_alloc(len_s, 1, "qpe_s", str)
     sum_reg = prw.qarray_alloc(1, n_qubits_sum, "sum", int)
@@ -329,11 +332,15 @@ def main(n,
                     wstate_ones,
                     wstate_zeros)
                 # ... ref 0^\perp
-                for j in range(k):
+                for j in range(len_w1):
                     prw.apply(X, wstate_ones[j])
-                prw.apply(Z.ctrl(k), qpe_s[qw_iter], wstate_ones)
-                for j in range(k):
+                for j in range(len_w0):
+                    prw.apply(X, wstate_zeros[j])
+                prw.apply(Z.ctrl(len_w1 + len_w0), qpe_s[qw_iter], wstate_ones, wstate_zeros)
+                for j in range(len_w1):
                     prw.apply(X, wstate_ones[j])
+                for j in range(len_w0):
+                    prw.apply(X, wstate_zeros[j])
                 prw.apply(
                     qrw_update,
                     node_s_ones,
@@ -356,10 +363,14 @@ def main(n,
                     wstate_zeros,
                     wstate_ones)
                 # ... ref 0^\perp
-                for j in range(n - k):
+                for j in range(len_w1):
+                    prw.apply(X, wstate_ones[j])
+                for j in range(len_w0):
                     prw.apply(X, wstate_zeros[j])
-                prw.apply(Z.ctrl(n - k), qpe_s[qw_iter], wstate_zeros)
-                for j in range(k):
+                prw.apply(Z.ctrl(len_w1 + len_w0), qpe_s[qw_iter], wstate_ones, wstate_zeros)
+                for j in range(len_w1):
+                    prw.apply(X, wstate_ones[j])
+                for j in range(len_w0):
                     prw.apply(X, wstate_zeros[j])
                 prw.apply(
                     qrw_update,
